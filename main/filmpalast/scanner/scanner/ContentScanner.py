@@ -2,17 +2,16 @@
 
 import asyncio
 import traceback
-from typing import List, Dict
-from urllib.parse import urljoin
+from typing import List
 
 from main.data import Config
 from main.data.MovieInfo import MovieInfo
 
-from main.scanner.manager.BrowserManager import BrowserManager
-from main.scanner.fetcher.PageFetcher import PageFetcher
-from main.scanner.extractor import MetadataExtractor, VideoLinkExtractor, MovieInfoExtractor
-from playwright.async_api import Locator, Page
-
+from main.filmpalast.manager.BrowserManager import BrowserManager
+from main.filmpalast.fetcher.PageFetcher import PageFetcher
+from main.filmpalast.scanner.extractor.MetadataExtractor import MetadataExtractor
+from main.filmpalast.scanner.extractor.VideoLinkExtractor import VideoLinkExtractor
+from main.filmpalast.scanner.extractor.MovieInfoExtractor import MovieInfoExtractor
 
 class ContentScanner:
     """

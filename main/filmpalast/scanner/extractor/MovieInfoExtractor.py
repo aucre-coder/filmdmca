@@ -5,8 +5,8 @@ from typing import Optional, List, Dict
 from urllib.parse import urljoin
 from playwright.async_api import Locator, Page  # ✅ Changed to async_api
 
-from main.scanner.extractor.MetadataExtractor import MetadataExtractor
-from main.scanner.extractor.VideoLinkExtractor import VideoLinkExtractor
+from main.filmpalast.scanner.extractor.MetadataExtractor import MetadataExtractor
+from main.filmpalast.scanner.extractor.VideoLinkExtractor import VideoLinkExtractor
 
 
 class MovieInfoExtractor:

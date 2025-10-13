@@ -6,14 +6,17 @@ from dataclasses import dataclass
 class Config:
     """Zentrale Konfiguration"""
     TMDB_API_KEY: str
-    TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
-    TARGET_SITE: str = "https://filmpalast.to"
+    TMDB_BASE_URL: str
+    TARGET_SITE: str
     REQUEST_TIMEOUT: int = 15
     PAGE_DELAY: float = 2.0
     MOVIE_DELAY: float = 1.5
 
     DISNEY_COMPANY_IDS: List[int] = None
     DISNEY_NETWORK_IDS: List[int] = None
+
+    MAX_CONCURRENT: float = 5
+
 
     def __post_init__(self):
         if self.DISNEY_COMPANY_IDS is None:

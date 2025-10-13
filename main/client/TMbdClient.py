@@ -12,6 +12,7 @@ class TMDbClient:
     - Multi-Strategie-Suche (Movie → TV → ohne Jahr → Ultra-Clean)
     - Erweiterte Titel-Bereinigung (Episode-Marker, Sprach-Tags, etc.)
     - Unterstützung für Movies und TV-Serien
+    - Dedizierte TV-Methoden (search_tv, get_tv_details)
     """
 
     def __init__(self, config):
@@ -82,6 +83,46 @@ class TMDbClient:
 
         return None
 
+    def search_tv(self, title: str) -> Optional[Dict]:
+        """
+        Sucht nur TV-Serien in TMDb
+
+        Strategien:
+        1. TV-Suche mit Jahr
+        2. TV-Suche ohne Jahr
+        3. Ultra-bereinigte TV-Suche
+
+        Returns:
+            Dict mit TV-Serie Daten (ohne media_type, da implizit 'tv')
+        """
+        year = self._extract_year(title)
+        clean_title = self._clean_title(title)
+
+        # Strategie 1: TV-Suche mit Jahr
+        result = self._search_endpoint('tv', clean_title, year)
+        if result:
+            return result
+
+        # Strategie 2: TV-Suche ohne Jahr (falls Jahr vorhanden war)
+        if year:
+            result = self._search_endpoint('tv', clean_title, None)
+            if result:
+                return result
+
+        # Strategie 3: Ultra-Clean Fallback
+        ultra_clean = self._ultra_clean_title(clean_title)
+        if ultra_clean != clean_title and len(ultra_clean) > 2:
+            result = self._search_endpoint('tv', ultra_clean, year)
+            if result:
+                return result
+
+            if year:
+                result = self._search_endpoint('tv', ultra_clean, None)
+                if result:
+                    return result
+
+        return None
+
     def _search_endpoint(self, endpoint_type: str, title: str, year: Optional[str]) -> Optional[Dict]:
         """
         Führt Suche auf spezifischem Endpoint durch
@@ -146,6 +187,34 @@ class TMDbClient:
 
         except Exception as e:
             print(f" Details-Fehler: {e}")
+
+        return None
+
+    def get_tv_details(self, tv_id: int) -> Optional[Dict]:
+        """
+        Holt detaillierte Informationen für TV-Serien
+
+        Args:
+            tv_id: TMDb TV-Serie ID
+
+        Returns:
+            Dict mit TV-Details oder None
+        """
+        try:
+            url = f"{self.config.TMDB_BASE_URL}/tv/{tv_id}"
+            params = {
+                'api_key': self.config.TMDB_API_KEY,
+                'language': 'de-DE'
+            }
+
+            response = requests.get(url, params=params, timeout=self.config.REQUEST_TIMEOUT)
+            self.api_calls += 1
+
+            if response.status_code == 200:
+                return response.json()
+
+        except Exception as e:
+            print(f" TV-Details-Fehler: {e}")
 
         return None
 

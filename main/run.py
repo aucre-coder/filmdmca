@@ -1,29 +1,35 @@
 import asyncio
+import importlib
 from main.data.Config import Config
-from main.scanner.DisneyContentScannerCaller import DisneyContentScannerCaller
 
 
 async def main():
     API_KEY = "faf01faf639d2a53896fed98347fd391"
 
-    if API_KEY == "DEIN_TMDB_API_KEY_HIER":
-        print("FEHLER: TMDb API Key fehlt!")
-        print("Kostenlos: https://www.themoviedb.org/settings/api")
-        return
+    SCANNER_TYPE = "disney"
 
-    config = Config(TMDB_API_KEY=API_KEY)
-    scanner = DisneyContentScannerCaller(config)
+    SCANNER_MAP = {
+        "disney": "main.bsto.scanner.scanner.DisneyContentScannerCaller.DisneyContentScannerCaller",
+        "netflix": "main.bsto.scanner.scanner.NetflixScannerCaller.NetflixScannerCaller",
+    }
+
+    scanner_path = SCANNER_MAP.get(SCANNER_TYPE)
+    if not scanner_path:
+        raise ValueError(f"Unknown scanner type: {SCANNER_TYPE}")
+
+    # Parse the full path
+    module_path, class_name = scanner_path.rsplit('.', 1)
+    module = importlib.import_module(module_path)
+    ScannerClass = getattr(module, class_name)
+
+    config = Config(TMDB_API_KEY=API_KEY,TMDB_BASE_URL="https://api.themoviedb.org/3",TARGET_SITE="https://bs.to")
+    scanner = ScannerClass(config)
 
     try:
-        # Initialize async components
         await scanner.initialize()
-
-        # Run the scanner
-        await scanner.run(num_pages=5)
+        await scanner.run()
     finally:
-        # Always cleanup resources
         await scanner.cleanup()
-
 
 if __name__ == '__main__':
     asyncio.run(main())

@@ -3,12 +3,13 @@ import traceback
 from typing import List, Dict
 from urllib.parse import urljoin
 
+from db.DatabaseManager import DatabaseManager
 from main.client.TMbdClient import TMDbClient
 from main.data import Config, MovieInfo
-from main.scanner.ContentScanner import ContentScanner
-from main.scanner.extractor import VideoLinkExtractor
-from main.scanner.fetcher.PageFetcher import PageFetcher
-from main.scanner.manager.BrowserManager import BrowserManager
+from main.filmpalast.scanner.scanner.ContentScanner import ContentScanner
+from main.filmpalast.scanner.extractor.VideoLinkExtractor import VideoLinkExtractor
+from main.filmpalast.fetcher.PageFetcher import PageFetcher
+from main.filmpalast.manager.BrowserManager import BrowserManager
 from main.statistics import ReportGenerator
 from main.statistics.Statistics import Statistics
 from main.verifier.DisneyVerifier import DisneyVerifier
@@ -27,7 +28,12 @@ class DisneyContentScannerCaller:
         self.page = None  # Will be set during initialization
         self.video_link_extractor = VideoLinkExtractor()
         self.browser_manager = BrowserManager(headless=True)
-        self.page_fetcher = None  # Will be initialized in initialize()
+        self.page_fetcher = None
+
+        db_path = r"C:\Users\aurel\PycharmProjects\filmdmca\db\dmcalinks.db"
+        self.db_manager = DatabaseManager(db_path)
+
+
 
     async def initialize(self):
         """Initialize async components."""
@@ -47,34 +53,68 @@ class DisneyContentScannerCaller:
         await self.browser_manager.stop()
 
     async def run(self, num_pages: int = 1):
-        """Führt kompletten Scan durch"""
-        print("Disney Content Scanner")
+        """
+        Main execution method - scans movies and stores Disney content in database.
+
+        Args:
+            num_pages: Number of overview pages to scan
+        """
+        print("Disney Content Scanner - Filmpalast")
         print(f"Ziel: {self.config.TARGET_SITE}")
         print("Verifikation: TMDb API\n")
 
-        # Schritt 1: URLs sammeln
+        # Scan overview pages to collect movie information
         movie = await self.scanner.scan_overview_pages(num_pages)
         self.stats.pages_scanned = num_pages
 
-        # Schritt 2: Filme prüfen
+        # Scan and verify movies
         await self._scan_movies(movie)
 
-        # Schritt 3: Reports
+        # Process results
         if self.findings:
-            filename, report = ReportGenerator.generate_json(
-                self.findings, self.stats, self.config
-            )
-            ReportGenerator.generate_email(self.findings, self.stats)
+            total_inserted = 0
+            # Extract website name from config (e.g., "filmpalast.to")
+            website = self.config.TARGET_SITE.replace("https://", "").split("/")[0]
 
+            print(f"\n=== Speichere {len(self.findings)} Disney-Filme in Datenbank ===")
+
+            for movie in self.findings:
+                try:
+                    # Insert video links for this movie
+                    inserted = self.db_manager.insert_video_links(
+                        company=movie.disney_company,
+                        video_links=movie.video_links,
+                        website=website
+                    )
+                    total_inserted += inserted
+
+                    if inserted > 0:
+                        print(f"  ✓ {movie.title}: {inserted} Links gespeichert")
+                    else:
+                        print(f"  ○ {movie.title}: Keine Links zum Speichern")
+
+                except Exception as e:
+                    print(f"  ✗ Fehler bei {movie.title}: {e}")
+                    traceback.print_exc()
+
+            # Update and print statistics
             self.stats.api_calls = self.tmdb_client.api_calls
             self.stats.print()
 
-            print(f"\n✓ Fertig!")
-            print(f"→ Sende an: tips@disneyantipiracy.com")
-            print(f"→ Anhang: {filename}")
+            # Final summary
+            print(f"\n{'=' * 50}")
+            print(f"✓ Fertig!")
+            print(f"{'=' * 50}")
+            print(f"→ {total_inserted} Video-Links in Datenbank eingefügt")
+            print(f"→ Datenbank: {self.db_manager.db_path}")
+            print(f"→ Gesamt Links in DB: {self.db_manager.get_link_count()}")
+            print(f"→ Disney-Filme gefunden: {len(self.findings)}")
+
         else:
             print("\nKeine Disney-Filme gefunden.")
             self.stats.print()
+            print(f"\n→ Datenbank: {self.db_manager.db_path}")
+            print(f"→ Aktuelle Links in DB: {self.db_manager.get_link_count()}")
 
     async def _scan_movies(self, movie_info: List[MovieInfo]):
         """Scannt alle Filme"""
