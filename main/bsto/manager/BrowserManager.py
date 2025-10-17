@@ -1,15 +1,16 @@
-"""Browser lifecycle management using Playwright."""
+"""Browser lifecycle management using Camoufox."""
 
 from typing import Optional
-from playwright.async_api import async_playwright, Browser, Playwright
+from camoufox.async_api import AsyncCamoufox
+from playwright.async_api import Browser
 
 
 class BrowserManager:
     """
-    Manages Playwright browser lifecycle (async version).
+    Manages Camoufox browser lifecycle (async version).
 
     Responsibilities:
-    - Starting/stopping Playwright
+    - Starting/stopping Camoufox
     - Launching/closing browser
     - Providing browser instances
     """
@@ -22,35 +23,35 @@ class BrowserManager:
             headless: Whether to run browser in headless mode
         """
         self.headless = headless
-        self._playwright: Optional[Playwright] = None
+        self._camoufox = None
         self._browser: Optional[Browser] = None
 
     async def start(self) -> Browser:
         """
-        Start Playwright and launch browser.
+        Start Camoufox and launch browser.
 
         Returns:
             Browser instance
         """
-        if not self._playwright:
-            self._playwright = await async_playwright().start()
+        if not self._camoufox:
+            self._camoufox = AsyncCamoufox(
+                headless=self.headless,
+                humanize=True,
+                geoip=True
+            )
 
         if not self._browser:
-            self._browser = await self._playwright.chromium.launch(
-                headless=self.headless
-            )
+            self._browser = await self._camoufox.start()
 
         return self._browser
 
     async def stop(self) -> None:
-        """Stop browser and Playwright."""
+        """Stop browser and Camoufox."""
         if self._browser:
             await self._browser.close()
             self._browser = None
 
-        if self._playwright:
-            await self._playwright.stop()
-            self._playwright = None
+        self._camoufox = None
 
     async def get_browser(self) -> Browser:
         """
